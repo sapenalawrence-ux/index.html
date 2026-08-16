@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mon Carnet de Recettes</title>
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: #f5f5f7; margin: 0; padding: 16px; color: #1c1c1e; }
+    h1 { text-align: center; color: #2c3e50; font-size: 1.5rem; margin-bottom: 20px; }
+    
+    .form-container { background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px; }
+    input, textarea { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+    textarea { resize: vertical; height: 80px; }
+    
+    .file-input-wrapper { margin-bottom: 12px; }
+    label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #666; }
+    
+    button { width: 100%; background: #007aff; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
+    button:active { background: #0056b3; }
+    
+    .recipe-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px; }
+    .recipe-card img { width: 100%; height: 200px; object-fit: cover; display: block; }
+    .recipe-content { padding: 16px; }
+    .recipe-title { font-size: 1.2rem; font-weight: bold; margin: 0 0 8px 0; color: #1c1c1e; }
+    .recipe-text { white-space: pre-line; font-size: 14px; color: #3a3a3c; margin-bottom: 12px; }
+    .delete-btn { background: #ff3b30; padding: 6px 12px; font-size: 12px; width: auto; }
+  </style>
+</head>
+<body>
+
+  <h1>📖 Mes Recettes</h1>
+
+  <div class="form-container">
+    <label for="title">Titre de la recette</label>
+    <input type="text" id="title" placeholder="ex: Tarte aux pommes">
+
+    <label for="ingredients">Ingrédients & Étapes</label>
+    <textarea id="ingredients" placeholder="2 pommes, 1 pâte feuilletée...&#10;1. Préchauffer le four..."></textarea>
+
+    <div class="file-input-wrapper">
+      <label for="photo">Photo de la recette</label>
+      <input type="file" id="photo" accept="image/*" capture="environment">
+    </div>
+
+    <button onclick="saveRecipe()">Ajouter la recette</button>
+  </div>
+
+  <div id="recipe-list"></div>
+
+  <script>
+    // Charger les recettes au démarrage
+    document.addEventListener('DOMContentLoaded', displayRecipes);
+
+    function saveRecipe() {
+      const title = document.getElementById('title').value.trim();
+      const ingredients = document.getElementById('ingredients').value.trim();
+      const photoInput = document.getElementById('photo');
+
+      if (!title) {
+        alert('Veuillez entrer au moins un titre.');
+        return;
+      }
+
+      const processAndSave = (imageData = '') => {
+        const recipes = JSON.parse(localStorage.getItem('my_recipes') || '[]');
+        recipes.unshift({ id: Date.now(), title, ingredients, photo: imageData });
+        
+        try {
+          localStorage.setItem('my_recipes', JSON.stringify(recipes));
+          // Réinitialiser le formulaire
+          document.getElementById('title').value = '';
+          document.getElementById('ingredients').value = '';
+          photoInput.value = '';
+          displayRecipes();
+        } catch (e) {
+          alert('Stockage saturé. Essayez une image plus petite.');
+        }
+      };
+
+      if (photoInput.files && photoInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => processAndSave(e.target.result);
+        reader.readAsDataURL(photoInput.files[0]);
+      } else {
+        processAndSave();
+      }
+    }
+
+    function displayRecipes() {
+      const listContainer = document.getElementById('recipe-list');
+      const recipes = JSON.parse(localStorage.getItem('my_recipes') || '[]');
+      
+      listContainer.innerHTML = recipes.map(r => `
+        <div class="recipe-card">
+          ${r.photo ? `<img src="${r.photo}" alt="${r.title}">` : ''}
+          <div class="recipe-content">
+            <h2 class="recipe-title">${escapeHtml(r.title)}</h2>
+            <p class="recipe-text">${escapeHtml(r.ingredients)}</p>
+            <button class="delete-btn" onclick="deleteRecipe(${r.id})">Supprimer</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function deleteRecipe(id) {
+      let recipes = JSON.parse(localStorage.getItem('my_recipes') || '[]');
+      recipes = recipes.filter(r => r.id !== id);
+      localStorage.setItem('my_recipes', JSON.stringify(recipes));
+      displayRecipes();
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+    }
+  </script>
+</body>
+</html>
